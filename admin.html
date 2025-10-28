@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Complaint Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1e1e2f, #252547, #141420);
+    background-size: 400% 400%;
+    animation: gradientShift 8s ease infinite;
+    font-family: "Poppins", sans-serif;
+    color: #fff;
+    padding: 20px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  h2 {
+    font-size: 2.2rem;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #ff6b6b, #ff8e53);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: glowText 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes glowText {
+    from { text-shadow: 0 0 10px #ff6b6b; }
+    to { text-shadow: 0 0 25px #ff8e53; }
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .controls {
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 25px rgba(255, 107, 107, 0.15);
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+  }
+
+  button {
+    padding: 12px 24px;
+    background: linear-gradient(90deg, #ff6b6b, #ff8e53);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s ease;
+    box-shadow: 0 0 15px rgba(255, 107, 107, 0.2);
+    font-size: 0.95rem;
+  }
+
+  button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(255, 107, 107, 0.4);
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .stats {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    font-size: 1rem;
+    color: #c8f7ff;
+  }
+
+  .stat-badge {
+    background: rgba(255, 107, 107, 0.2);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+  }
+
+  .complaints-container {
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 0 25px rgba(255, 107, 107, 0.15);
+    min-height: 200px;
+  }
+
+  .complaint-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid #ff6b6b;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 15px;
+    transition: 0.3s;
+    animation: slideIn 0.5s ease-out;
+  }
+
+  .complaint-card:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(5px);
+    box-shadow: 0 0 20px rgba(255, 107, 107, 0.2);
+  }
+
+  .complaint-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .complaint-id {
+    font-weight: bold;
+    color: #ff8e53;
+    font-size: 0.9rem;
+  }
+
+  .complaint-date {
+    color: #aaa;
+    font-size: 0.85rem;
+  }
+
+  .complaint-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #00ffe7;
+    margin-bottom: 8px;
+  }
+
+  .complaint-text {
+    color: #ddd;
+    line-height: 1.6;
+    margin-bottom: 10px;
+  }
+
+  .complaint-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: #999;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .submitter-address {
+    font-family: monospace;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px 8px;
+    border-radius: 5px;
+  }
+
+  .no-complaints {
+    text-align: center;
+    padding: 40px;
+    color: #aaa;
+    font-size: 1.1rem;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: #00ffe7;
+    font-size: 1.1rem;
+  }
+
+  .error-message {
+    text-align: center;
+    padding: 20px;
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+    border-radius: 10px;
+    margin: 20px 0;
+  }
+
+  .back-link {
+    text-align: center;
+    margin-top: 20px;
+  }
+
+  .back-link a {
+    color: #00ffe7;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: 0.3s;
+  }
+
+  .back-link a:hover {
+    color: #00fff2;
+    text-shadow: 0 0 10px #00ffe7;
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .complaint-header, .complaint-footer {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>🔐 Admin Dashboard</h2>
+    </div>
+
+    <div class="controls">
+      <button id="connect">Connect MetaMask</button>
+      <button id="refresh" disabled>🔄 Refresh Complaints</button>
+      <div class="stats">
+        <span class="stat-badge">Total: <span id="totalCount">0</span></span>
+      </div>
+    </div>
+
+    <div class="complaints-container" id="complaintsContainer">
+      <div class="loading">Please connect your wallet to view complaints</div>
+    </div>
+
+    <div class="back-link">
+      <a href="user.html">← Back to User Portal</a>
+    </div>
+  </div>
+
+  <script>
+    // Replace with your deployed contract address
+    const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+    const contractABI = [
+      {
+        "inputs": [],
+        "name": "getAllComplaints",
+        "outputs": [
+          {
+            "components": [
+              { "internalType": "uint256", "name": "id", "type": "uint256" },
+              { "internalType": "string", "name": "name", "type": "string" },
+              { "internalType": "string", "name": "complaint", "type": "string" },
+              { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+              { "internalType": "address", "name": "submitter", "type": "address" }
+            ],
+            "internalType": "struct Complaints.Complaint[]",
+            "name": "",
+            "type": "tuple[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "getTotalComplaints",
+        "outputs": [
+          { "internalType": "uint256", "name": "", "type": "uint256" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
+
+    let provider, signer, contract;
+    
+    const connectBtn = document.getElementById("connect");
+    const refreshBtn = document.getElementById("refresh");
+    const complaintsContainer = document.getElementById("complaintsContainer");
+    const totalCount = document.getElementById("totalCount");
+
+    connectBtn.onclick = async () => {
+      try {
+        if (!window.ethereum) {
+          showError("MetaMask not found! Please install MetaMask.");
+          return;
+        }
+
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
+        
+        connectBtn.textContent = "✅ Connected";
+        connectBtn.disabled = true;
+        refreshBtn.disabled = false;
+        
+        await loadComplaints();
+      } catch (err) {
+        showError(`Connection failed: ${err.message}`);
+      }
+    };
+
+    refreshBtn.onclick = async () => {
+      await loadComplaints();
+    };
+
+    async function loadComplaints() {
+      try {
+        complaintsContainer.innerHTML = '<div class="loading">⏳ Loading complaints...</div>';
+        
+        const complaints = await contract.getAllComplaints();
+        const total = await contract.getTotalComplaints();
+        
+        totalCount.textContent = total.toString();
+        
+        if (complaints.length === 0) {
+          complaintsContainer.innerHTML = '<div class="no-complaints">📭 No complaints yet</div>';
+          return;
+        }
+        
+        // Reverse to show newest first
+        const reversedComplaints = [...complaints].reverse();
+        
+        complaintsContainer.innerHTML = '';
+        
+        reversedComplaints.forEach(complaint => {
+          const card = createComplaintCard(complaint);
+          complaintsContainer.appendChild(card);
+        });
+        
+      } catch (err) {
+        showError(`Failed to load complaints: ${err.message}`);
+      }
+    }
+
+    function createComplaintCard(complaint) {
+      const card = document.createElement('div');
+      card.className = 'complaint-card';
+      
+      const date = new Date(complaint.timestamp.toNumber() * 1000);
+      const formattedDate = date.toLocaleString();
+      
+      const shortAddress = `${complaint.submitter.substring(0, 6)}...${complaint.submitter.substring(38)}`;
+      
+      card.innerHTML = `
+        <div class="complaint-header">
+          <span class="complaint-id">Complaint #${complaint.id.toString()}</span>
+          <span class="complaint-date">${formattedDate}</span>
+        </div>
+        <div class="complaint-name">👤 ${escapeHtml(complaint.name)}</div>
+        <div class="complaint-text">${escapeHtml(complaint.complaint)}</div>
+        <div class="complaint-footer">
+          <span>Submitted by:</span>
+          <span class="submitter-address">${shortAddress}</span>
+        </div>
+      `;
+      
+      return card;
+    }
+
+    function showError(message) {
+      complaintsContainer.innerHTML = `<div class="error-message">❌ ${escapeHtml(message)}</div>`;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
