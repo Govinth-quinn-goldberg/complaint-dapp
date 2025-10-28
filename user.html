@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Complaint</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #1e1e2f, #252547, #141420);
+    background-size: 400% 400%;
+    animation: gradientShift 8s ease infinite;
+    font-family: "Poppins", sans-serif;
+    color: #fff;
+    padding: 20px;
+  }
+
+  h2 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    background: linear-gradient(90deg, #00ffe7, #00a2ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: glowText 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes glowText {
+    from { text-shadow: 0 0 10px #00eaff; }
+    to { text-shadow: 0 0 25px #00fff2; }
+  }
+
+  .container {
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 30px;
+    width: 90%;
+    max-width: 450px;
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0.15);
+    animation: fadeIn 1.2s ease-out;
+  }
+
+  input, textarea {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: none;
+    border-radius: 10px;
+    outline: none;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 0.95rem;
+    transition: 0.3s;
+    box-sizing: border-box;
+    font-family: "Poppins", sans-serif;
+  }
+
+  textarea {
+    min-height: 120px;
+    resize: vertical;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #bbb;
+  }
+
+  input:focus, textarea:focus {
+    background: #ffffff40;
+    box-shadow: 0 0 10px #00ffe7;
+  }
+
+  button {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #00ffe7, #007aff);
+    border: none;
+    border-radius: 12px;
+    color: #000;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s ease;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+    font-size: 1rem;
+  }
+
+  button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0.4);
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .admin-link {
+    margin-top: 20px;
+    text-align: center;
+  }
+
+  .admin-link a {
+    color: #00ffe7;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: 0.3s;
+  }
+
+  .admin-link a:hover {
+    color: #00fff2;
+    text-shadow: 0 0 10px #00ffe7;
+  }
+
+  #output {
+    text-align: center;
+    color: #c8f7ff;
+    margin-top: 15px;
+    font-size: 0.95rem;
+    min-height: 30px;
+    padding: 10px;
+    background: rgba(0, 255, 231, 0.1);
+    border-radius: 8px;
+  }
+
+  .success {
+    color: #00ff88;
+  }
+
+  .error {
+    color: #ff6b6b;
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .wallet-info {
+    font-size: 0.85rem;
+    color: #aaa;
+    text-align: center;
+    margin-bottom: 15px;
+    word-break: break-all;
+  }
+</style>
+</head>
+<body>
+  <h2>📝 Submit Your Complaint</h2>
+
+  <div class="container">
+    <button id="connect">Connect MetaMask</button>
+    <div id="walletInfo" class="wallet-info"></div>
+    
+    <input id="name" placeholder="Enter your name" />
+    <textarea id="complaint" placeholder="Describe your complaint in detail..."></textarea>
+    <button id="store" disabled>Submit Complaint</button>
+    
+    <div id="output"></div>
+
+    <div class="admin-link">
+      <a href="admin.html">👤 Admin Panel</a>
+    </div>
+  </div>
+
+  <script>
+    // Replace with your deployed contract address
+    const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+    const contractABI = [
+      {
+        "inputs": [
+          { "internalType": "string", "name": "_name", "type": "string" },
+          { "internalType": "string", "name": "_complaint", "type": "string" }
+        ],
+        "name": "addComplaint",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "getAllComplaints",
+        "outputs": [
+          {
+            "components": [
+              { "internalType": "uint256", "name": "id", "type": "uint256" },
+              { "internalType": "string", "name": "name", "type": "string" },
+              { "internalType": "string", "name": "complaint", "type": "string" },
+              { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+              { "internalType": "address", "name": "submitter", "type": "address" }
+            ],
+            "internalType": "struct Complaints.Complaint[]",
+            "name": "",
+            "type": "tuple[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "getTotalComplaints",
+        "outputs": [
+          { "internalType": "uint256", "name": "", "type": "uint256" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
+
+    let provider, signer, contract, userAddress;
+    
+    const connectBtn = document.getElementById("connect");
+    const storeBtn = document.getElementById("store");
+    const output = document.getElementById("output");
+    const walletInfo = document.getElementById("walletInfo");
+
+    connectBtn.onclick = async () => {
+      try {
+        if (!window.ethereum) {
+          output.innerHTML = '<span class="error">❌ MetaMask not found! Please install MetaMask.</span>';
+          return;
+        }
+
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        userAddress = await signer.getAddress();
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
+        
+        connectBtn.textContent = "✅ Connected";
+        connectBtn.disabled = true;
+        storeBtn.disabled = false;
+        
+        walletInfo.textContent = `Connected: ${userAddress.substring(0, 6)}...${userAddress.substring(38)}`;
+        output.innerHTML = '<span class="success">✅ Wallet connected successfully!</span>';
+      } catch (err) {
+        output.innerHTML = `<span class="error">❌ Connection failed: ${err.message}</span>`;
+      }
+    };
+
+    storeBtn.onclick = async () => {
+      const name = document.getElementById("name").value.trim();
+      const complaint = document.getElementById("complaint").value.trim();
+      
+      if (!name || !complaint) {
+        output.innerHTML = '<span class="error">⚠️ Please enter both name and complaint!</span>';
+        return;
+      }
+
+      try {
+        storeBtn.textContent = "Submitting...";
+        storeBtn.disabled = true;
+        output.innerHTML = '<span>⏳ Processing transaction...</span>';
+
+        const tx = await contract.addComplaint(name, complaint);
+        output.innerHTML = '<span>⏳ Waiting for confirmation...</span>';
+        await tx.wait();
+        
+        output.innerHTML = '<span class="success">✅ Complaint submitted successfully!</span>';
+        document.getElementById("name").value = "";
+        document.getElementById("complaint").value = "";
+        
+        storeBtn.textContent = "Submit Complaint";
+        storeBtn.disabled = false;
+      } catch (err) {
+        output.innerHTML = `<span class="error">❌ Error: ${err.message}</span>`;
+        storeBtn.textContent = "Submit Complaint";
+        storeBtn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>
